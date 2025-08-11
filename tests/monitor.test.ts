@@ -3,7 +3,7 @@ import { jest } from '@jest/globals';
 
 // Mock environment variables
 const mockEnv = {
-  ETHEREUM_WS_URL: 'ws://localhost:8548',
+  ETHEREUM_WS_URL: 'ws://localhost:8545',
   TELEGRAM_BOT_TOKEN: 'test_bot_token',
   TELEGRAM_CHAT_ID: 'test_chat_id',
   BLOCK_TIMEOUT_SECONDS: '60',
@@ -26,7 +26,7 @@ describe('Config', () => {
   test('should load config with all required fields', () => {
     const config = loadConfig();
     
-    expect(config.ethereum.wsUrl).toBe('ws://localhost:8548');
+    expect(config.ethereum.wsUrl).toBe('ws://localhost:8545');
     expect(config.telegram.botToken).toBe('test_bot_token');
     expect(config.telegram.chatId).toBe('test_chat_id');
     expect(config.monitoring.blockTimeoutSeconds).toBe(60);

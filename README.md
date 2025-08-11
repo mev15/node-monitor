@@ -40,7 +40,7 @@ Edit the `.env` file:
 
 ```bash
 # Ethereum WebSocket URL
-ETHEREUM_WS_URL=ws://localhost:8548
+ETHEREUM_WS_URL=ws://localhost:8545
 
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=your_bot_token_here
