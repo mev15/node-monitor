@@ -25,18 +25,18 @@ describe('Config', () => {
 
   test('should load config with all required fields', () => {
     const config = loadConfig();
-    
+
     expect(config.ethereum.wsUrl).toBe('ws://localhost:8545');
     expect(config.telegram.botToken).toBe('test_bot_token');
     expect(config.telegram.chatId).toBe('test_chat_id');
-    expect(config.monitoring.blockTimeoutSeconds).toBe(60);
-    expect(config.monitoring.maxReconnectAttempts).toBe(3);
-    expect(config.monitoring.reconnectDelayMs).toBe(5000);
+    expect(config.ethereum.blockTimeoutSeconds).toBe(60);
+    expect(config.ethereum.maxReconnectAttempts).toBe(3);
+    expect(config.ethereum.reconnectDelayMs).toBe(5000);
   });
 
-  test('should throw error if ETHEREUM_WS_URL is missing', () => {
+  test('should throw error if ETHEREUM_WS_URL is missing when enabled', () => {
     delete process.env.ETHEREUM_WS_URL;
-    expect(() => loadConfig()).toThrow('ETHEREUM_WS_URL is required');
+    expect(() => loadConfig()).toThrow('ETHEREUM_WS_URL is required when Ethereum monitor is enabled');
   });
 
   test('should throw error if TELEGRAM_BOT_TOKEN is missing', () => {
@@ -49,16 +49,16 @@ describe('Config', () => {
     expect(() => loadConfig()).toThrow('TELEGRAM_CHAT_ID is required');
   });
 
-  test('should use default values for monitoring config', () => {
+  test('should use default values for Ethereum monitoring config', () => {
     delete process.env.BLOCK_TIMEOUT_SECONDS;
     delete process.env.MAX_RECONNECT_ATTEMPTS;
     delete process.env.RECONNECT_DELAY_MS;
-    
+
     const config = loadConfig();
-    
-    expect(config.monitoring.blockTimeoutSeconds).toBe(60);
-    expect(config.monitoring.maxReconnectAttempts).toBe(3);
-    expect(config.monitoring.reconnectDelayMs).toBe(5000);
+
+    expect(config.ethereum.blockTimeoutSeconds).toBe(60);
+    expect(config.ethereum.maxReconnectAttempts).toBe(3);
+    expect(config.ethereum.reconnectDelayMs).toBe(5000);
   });
 });
 
@@ -82,35 +82,35 @@ describe('EthereumNodeMonitor', () => {
     // 2. Simulate connection errors
     // 3. Verify that alerts are sent
     // 4. Check that the process exits correctly
-    
+
     expect(true).toBe(true); // Placeholder
   });
 
   test('should detect block timeout', async () => {
     // Test that the monitor detects when no blocks are received for the timeout period
     // This would require mocking timers and the block subscription
-    
+
     expect(true).toBe(true); // Placeholder
   });
 
   test('should send Telegram alerts', async () => {
     // Test that Telegram alerts are sent correctly
     // Mock the Telegram bot and verify message format
-    
+
     expect(true).toBe(true); // Placeholder
   });
 
   test('should handle graceful shutdown', async () => {
     // Test that the monitor shuts down gracefully on SIGINT/SIGTERM
     // Verify cleanup of intervals and subscriptions
-    
+
     expect(true).toBe(true); // Placeholder
   });
 
   test('should attempt reconnection on failure', async () => {
     // Test that the monitor attempts to reconnect the configured number of times
     // Verify the delay between attempts
-    
+
     expect(true).toBe(true); // Placeholder
   });
 });

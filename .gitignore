@@ -75,3 +75,8 @@ Desktop.ini
 
 # Optional stylelint cache
 .stylelintcache
+
+# Redis
+dump.rdb
+*.rdb
+redis.log

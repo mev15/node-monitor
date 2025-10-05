@@ -1,16 +1,26 @@
-# Ethereum Node Monitor
+# Node Monitor
 
-A simple and efficient Ethereum node monitoring tool with real-time Telegram bot alerts for node anomalies.
+A comprehensive monitoring tool for Ethereum nodes and Redis servers with real-time Telegram bot alerts for service anomalies.
 
 ## Features
 
+### Ethereum Node Monitoring
 - 🔍 **Real-time Monitoring**: WebSocket connection to monitor Ethereum node new blocks
 - ⏱️ **Timeout Detection**: Auto-alert when no new blocks received for over 1 minute
 - 🔄 **Auto-reconnect**: Automatic reconnection attempts when connection is lost
-- 📱 **Telegram Notifications**: Immediate Telegram alerts for anomalies
-- 🛑 **Auto-exit**: Process exits automatically after sending alerts
-- ✅ **Startup Notification**: Sends Telegram notification when monitoring starts
-- 🌐 **Smart IP Conversion**: Automatically converts local node addresses to actual IPv4 addresses
+
+### Redis Server Monitoring
+- 🔍 **Health Checks**: Periodic PING, memory usage, and connection count monitoring
+- ⏱️ **Response Time Monitoring**: Alerts on slow response times
+- 💾 **Memory Threshold Alerts**: Configurable memory usage alerts
+- 🔄 **Auto-reconnect**: Automatic reconnection on connection failure
+
+### Common Features
+- 📱 **Telegram Notifications**: Immediate alerts for all anomalies
+- ✅ **Startup Notification**: Confirmation when monitors start
+- 🌐 **Smart IP Conversion**: Automatically converts local addresses to actual IPv4
+- 🔧 **Modular Architecture**: Enable/disable monitors independently
+- 🛑 **Graceful Shutdown**: Clean resource cleanup on exit
 
 ## Quick Start
 
@@ -39,15 +49,32 @@ cp .env.example .env
 Edit the `.env` file:
 
 ```bash
-# Ethereum WebSocket URL
+# Monitor Enable Flags (optional)
+ENABLE_ETHEREUM_MONITOR=true    # Default: true
+ENABLE_REDIS_MONITOR=false      # Default: false, set to true to enable
+
+# Ethereum Configuration
 ETHEREUM_WS_URL=ws://localhost:8545
 
-# Telegram Bot Configuration
+# Redis Configuration (required if Redis monitor is enabled)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=                 # Optional
+REDIS_DB=0                      # Optional, default: 0
+
+# Telegram Bot Configuration (required)
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
 
-# Monitoring Settings (optional)
+# Ethereum Monitoring Settings (optional)
 BLOCK_TIMEOUT_SECONDS=60        # Block timeout in seconds
+
+# Redis Monitoring Settings (optional)
+REDIS_HEALTH_CHECK_INTERVAL_MS=30000    # Health check interval (default: 30s)
+REDIS_TIMEOUT_MS=5000                    # Operation timeout (default: 5s)
+REDIS_MEMORY_ALERT_THRESHOLD_MB=1000    # Memory alert threshold (optional)
+
+# Common Settings (optional)
 MAX_RECONNECT_ATTEMPTS=3        # Maximum reconnection attempts
 RECONNECT_DELAY_MS=5000         # Reconnection delay in milliseconds
 ```

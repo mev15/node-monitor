@@ -26,9 +26,9 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       max_restarts: 10,
       min_uptime: '10s',
-      // Restart strategy
-      restart_delay: 4000,
-      exp_backoff_restart_delay: 100
+      // Restart strategy - 固定60秒延迟
+      restart_delay: 60000,  // 60秒后重启，避免频繁重启
+      exp_backoff_restart_delay: 0  // 设为0禁用指数退避
     }
   ]
 };

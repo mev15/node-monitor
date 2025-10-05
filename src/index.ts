@@ -1,239 +1,157 @@
-import { createPublicClient, webSocket, type PublicClient } from 'viem';
-import { mainnet } from 'viem/chains';
-import TelegramBot from 'node-telegram-bot-api';
-import winston from 'winston';
-import * as os from 'os';
-import { loadConfig, type Config } from './config';
+import { loadConfig } from './config';
+import { Logger } from './core/Logger';
+import { TelegramNotifier } from './core/TelegramNotifier';
+import { EthereumMonitor } from './monitors/EthereumMonitor';
+import { RedisMonitor } from './monitors/RedisMonitor';
+import { BaseMonitor } from './core/BaseMonitor';
 
-// Logger setup
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
-    }),
-    new winston.transports.File({ 
-      filename: 'logs/error.log', 
-      level: 'error' 
-    }),
-    new winston.transports.File({ 
-      filename: 'logs/combined.log' 
-    }),
-  ],
-});
-
-class EthereumNodeMonitor {
-  private config: Config;
-  private client: PublicClient | null = null;
-  private telegramBot: TelegramBot;
-  private lastBlockTime: number = Date.now();
-  private blockCheckInterval: NodeJS.Timeout | null = null;
-  private unsubscribe: (() => void) | null = null;
+class MonitorCoordinator {
+  private monitors: BaseMonitor[] = [];
+  private logger: Logger;
   private isShuttingDown = false;
-  private reconnectAttempts = 0;
-  private displayNodeUrl: string;
 
-  constructor(config: Config) {
-    this.config = config;
-    this.telegramBot = new TelegramBot(config.telegram.botToken, { polling: false });
-    this.displayNodeUrl = this.getDisplayNodeUrl(config.ethereum.wsUrl);
-  }
-
-  private getDisplayNodeUrl(url: string): string {
-    // Check if URL contains localhost or 127.0.0.1
-    if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      const localIp = this.getLocalIpv4();
-      if (localIp) {
-        return url.replace(/localhost|127\.0\.0\.1/, localIp);
-      }
-    }
-    return url;
-  }
-
-  private getLocalIpv4(): string | null {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-      const iface = interfaces[name];
-      if (iface) {
-        for (const addr of iface) {
-          if (addr.family === 'IPv4' && !addr.internal) {
-            return addr.address;
-          }
-        }
-      }
-    }
-    return null;
+  constructor() {
+    this.logger = Logger.getInstance();
   }
 
   async start(): Promise<void> {
-    logger.info('Starting Ethereum node monitor...');
-    
-    // Setup graceful shutdown
-    process.on('SIGINT', () => this.shutdown('SIGINT'));
-    process.on('SIGTERM', () => this.shutdown('SIGTERM'));
-
-    // Send startup notification
-    await this.sendStartupNotification();
-
-    await this.connect();
-    this.startBlockTimeoutCheck();
-  }
-
-  private async sendStartupNotification(): Promise<void> {
-    const message = `✅ *Ethereum Node Monitor Started*\n\n` +
-      `Monitoring node: ${this.displayNodeUrl}\n` +
-      `Block timeout: ${this.config.monitoring.blockTimeoutSeconds} seconds\n` +
-      `Max reconnect attempts: ${this.config.monitoring.maxReconnectAttempts}\n` +
-      `Time: ${new Date().toISOString()}`;
-    
     try {
-      await this.telegramBot.sendMessage(this.config.telegram.chatId, message, {
-        parse_mode: 'Markdown',
-      });
-      logger.info('Startup notification sent to Telegram');
-    } catch (error) {
-      logger.error('Failed to send startup notification:', error);
-    }
-  }
+      // Load configuration
+      const config = loadConfig();
+      this.logger.info('Configuration loaded successfully');
 
-  private async connect(): Promise<void> {
-    try {
-      logger.info(`Connecting to Ethereum node: ${this.config.ethereum.wsUrl}`);
-      
-      const transport = webSocket(this.config.ethereum.wsUrl, {
-        reconnect: false, // We'll handle reconnection manually
-      });
+      // Initialize shared services
+      const notifier = TelegramNotifier.getInstance(config.telegram);
+      this.logger.info('Telegram notifier initialized');
 
-      this.client = createPublicClient({
-        chain: mainnet,
-        transport,
-      });
-
-      // Subscribe to new blocks
-      this.unsubscribe = await this.client.watchBlocks({
-        onBlock: (block) => this.handleNewBlock(block),
-        onError: (error) => this.handleSubscriptionError(error),
-      });
-
-      logger.info('Successfully connected and subscribed to new blocks');
-      this.reconnectAttempts = 0;
-    } catch (error) {
-      logger.error('Failed to connect to Ethereum node:', error);
-      await this.handleConnectionFailure();
-    }
-  }
-
-  private handleNewBlock(block: any): void {
-    const blockNumber = block.number;
-    const timestamp = new Date().toISOString();
-    
-    logger.info(`New block received: ${blockNumber} at ${timestamp}`);
-    this.lastBlockTime = Date.now();
-  }
-
-  private startBlockTimeoutCheck(): void {
-    const timeoutMs = this.config.monitoring.blockTimeoutSeconds * 1000;
-    
-    this.blockCheckInterval = setInterval(async () => {
-      const timeSinceLastBlock = Date.now() - this.lastBlockTime;
-      
-      if (timeSinceLastBlock > timeoutMs) {
-        logger.error(`No new blocks received for ${this.config.monitoring.blockTimeoutSeconds} seconds`);
-        await this.sendAlert('Block Timeout', `No new blocks received for more than ${this.config.monitoring.blockTimeoutSeconds} seconds`);
-        await this.shutdown('BLOCK_TIMEOUT');
+      // Initialize monitors based on configuration
+      if (config.ethereum.enabled) {
+        const ethereumMonitor = new EthereumMonitor(
+          config.ethereum,
+          this.logger,
+          notifier
+        );
+        this.monitors.push(ethereumMonitor);
+        this.logger.info('Ethereum monitor initialized');
       }
-    }, 5000); // Check every 5 seconds
-  }
 
-
-  private async handleSubscriptionError(error: Error): Promise<void> {
-    logger.error('Block subscription error:', error);
-    await this.handleConnectionFailure();
-  }
-
-  private async handleConnectionFailure(): Promise<void> {
-    if (this.isShuttingDown) return;
-
-    this.reconnectAttempts++;
-    
-    if (this.reconnectAttempts <= this.config.monitoring.maxReconnectAttempts) {
-      logger.info(`Attempting to reconnect (${this.reconnectAttempts}/${this.config.monitoring.maxReconnectAttempts})...`);
-      
-      // Clean up existing connection
-      if (this.unsubscribe) {
-        this.unsubscribe();
-        this.unsubscribe = null;
+      if (config.redis.enabled) {
+        const redisMonitor = new RedisMonitor(
+          config.redis,
+          this.logger,
+          notifier
+        );
+        this.monitors.push(redisMonitor);
+        this.logger.info('Redis monitor initialized');
       }
-      
-      // Wait before reconnecting
-      await new Promise(resolve => setTimeout(resolve, this.config.monitoring.reconnectDelayMs));
-      
-      // Try to reconnect
-      await this.connect();
-    } else {
-      logger.error('Max reconnection attempts reached');
-      await this.sendAlert('Connection Lost', `Failed to connect to Ethereum node after ${this.config.monitoring.maxReconnectAttempts} attempts`);
-      await this.shutdown('CONNECTION_LOST');
+
+      if (this.monitors.length === 0) {
+        throw new Error('No monitors are enabled. Please enable at least one monitor.');
+      }
+
+      // Setup global shutdown handlers
+      this.setupShutdownHandlers();
+
+      // Start all monitors
+      this.logger.info(`Starting ${this.monitors.length} monitor(s)...`);
+      const startPromises = this.monitors.map(monitor =>
+        monitor.start().catch(error => {
+          this.logger.error(`Failed to start monitor:`, error);
+          throw error;
+        })
+      );
+
+      await Promise.all(startPromises);
+      this.logger.info('All monitors started successfully');
+
+      // Keep the process running
+      await this.keepAlive();
+
+    } catch (error) {
+      this.logger.error('Failed to start monitor coordinator:', error);
+      await this.shutdown('STARTUP_FAILURE');
+      process.exit(1);
     }
   }
 
-  private async sendAlert(title: string, message: string): Promise<void> {
-    const fullMessage = `🚨 *${title}*\n\n${message}\n\nTime: ${new Date().toISOString()}\nNode: ${this.displayNodeUrl}`;
-    
-    try {
-      await this.telegramBot.sendMessage(this.config.telegram.chatId, fullMessage, {
-        parse_mode: 'Markdown',
-      });
-      logger.info('Alert sent to Telegram');
-    } catch (error) {
-      logger.error('Failed to send Telegram alert:', error);
-    }
+  private setupShutdownHandlers(): void {
+    const shutdownHandler = async (signal: string) => {
+      if (!this.isShuttingDown) {
+        await this.shutdown(signal);
+      }
+    };
+
+    process.once('SIGINT', () => shutdownHandler('SIGINT'));
+    process.once('SIGTERM', () => shutdownHandler('SIGTERM'));
+    process.once('uncaughtException', (error) => {
+      this.logger.error('Uncaught exception:', error);
+      shutdownHandler('UNCAUGHT_EXCEPTION');
+    });
+    process.once('unhandledRejection', (reason) => {
+      this.logger.error('Unhandled rejection:', reason);
+      shutdownHandler('UNHANDLED_REJECTION');
+    });
+  }
+
+  private async keepAlive(): Promise<void> {
+    // Keep the process alive by checking monitor status periodically
+    return new Promise((resolve) => {
+      const statusCheckInterval = setInterval(async () => {
+        if (this.isShuttingDown) {
+          clearInterval(statusCheckInterval);
+          resolve();
+          return;
+        }
+
+        // Check if any monitors have shut down
+        const activeMonitors = this.monitors.filter(monitor =>
+          monitor.getStatus() !== 'shutting_down'
+        );
+
+        if (activeMonitors.length === 0) {
+          this.logger.warn('All monitors have shut down');
+          clearInterval(statusCheckInterval);
+          await this.shutdown('ALL_MONITORS_DOWN');
+          resolve();
+        }
+      }, 5000); // Check every 5 seconds
+    });
   }
 
   private async shutdown(reason: string): Promise<void> {
     if (this.isShuttingDown) return;
-    
-    this.isShuttingDown = true;
-    logger.info(`Shutting down monitor (reason: ${reason})...`);
 
-    // Clean up
-    if (this.blockCheckInterval) {
-      clearInterval(this.blockCheckInterval);
-    }
-    
-    if (this.unsubscribe) {
-      this.unsubscribe();
-    }
+    this.isShuttingDown = true;
+    this.logger.info(`Shutting down monitor coordinator (reason: ${reason})...`);
+
+    // Shutdown all monitors in parallel
+    const shutdownPromises = this.monitors.map(monitor =>
+      monitor.shutdown(reason).catch(error => {
+        this.logger.error('Error shutting down monitor:', error);
+      })
+    );
+
+    await Promise.all(shutdownPromises);
 
     // Wait a bit for any pending operations
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    process.exit(reason === 'SIGINT' || reason === 'SIGTERM' ? 0 : 1);
+
+    this.logger.info('Monitor coordinator shutdown complete');
+
+    // Exit with appropriate code
+    const exitCode = reason === 'SIGINT' || reason === 'SIGTERM' ? 0 : 1;
+    process.exit(exitCode);
   }
 }
 
 // Main execution
 async function main() {
-  try {
-    const config = loadConfig();
-    const monitor = new EthereumNodeMonitor(config);
-    await monitor.start();
-  } catch (error) {
-    logger.error('Failed to start monitor:', error);
-    process.exit(1);
-  }
+  const coordinator = new MonitorCoordinator();
+  await coordinator.start();
 }
 
-// Start the monitor
+// Start the application
 main().catch((error) => {
-  logger.error('Unhandled error:', error);
+  console.error('Fatal error starting application:', error);
   process.exit(1);
 });
