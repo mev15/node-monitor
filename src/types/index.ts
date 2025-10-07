@@ -25,9 +25,15 @@ export interface RedisConfig extends MonitorConfig {
   memoryAlertThresholdMb?: number;
 }
 
+export interface DiskConfig extends MonitorConfig {
+  path: string;  // 要监控的路径或挂载点（单个路径）
+  thresholdPercent: number;  // 使用率告警阈值（百分比，0-100）
+}
+
 export interface Config {
   ethereum: EthereumConfig;
   redis: RedisConfig;
+  disk: DiskConfig;
   telegram: TelegramConfig;
 }
 

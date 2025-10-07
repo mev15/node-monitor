@@ -1,6 +1,6 @@
 # Node Monitor
 
-A comprehensive monitoring tool for Ethereum nodes and Redis servers with real-time Telegram bot alerts for service anomalies.
+A comprehensive monitoring tool for Ethereum nodes, Redis servers, and disk space with real-time Telegram bot alerts for service anomalies.
 
 ## Features
 
@@ -14,6 +14,12 @@ A comprehensive monitoring tool for Ethereum nodes and Redis servers with real-t
 - ⏱️ **Response Time Monitoring**: Alerts on slow response times
 - 💾 **Memory Threshold Alerts**: Configurable memory usage alerts
 - 🔄 **Auto-reconnect**: Automatic reconnection on connection failure
+
+### Disk Space Monitoring
+- 💾 **Usage Monitoring**: Monitor disk space usage for specified paths
+- ⏰ **Hourly Checks**: Automatic checks at the top of each hour
+- 🚨 **Threshold Alerts**: Configurable alerts when disk usage exceeds threshold
+- 📊 **Startup Status**: Reports current disk usage when monitoring starts
 
 ### Common Features
 - 📱 **Telegram Notifications**: Immediate alerts for all anomalies
@@ -52,6 +58,7 @@ Edit the `.env` file:
 # Monitor Enable Flags (optional)
 ENABLE_ETHEREUM_MONITOR=true    # Default: true
 ENABLE_REDIS_MONITOR=false      # Default: false, set to true to enable
+ENABLE_DISK_MONITOR=false        # Default: false, set to true to enable
 
 # Ethereum Configuration
 ETHEREUM_WS_URL=ws://localhost:8545
@@ -61,6 +68,10 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=                 # Optional
 REDIS_DB=0                      # Optional, default: 0
+
+# Disk Configuration (required if Disk monitor is enabled)
+DISK_PATH=/                      # Path to monitor
+DISK_THRESHOLD_PERCENT=80        # Alert when usage exceeds this percentage
 
 # Telegram Bot Configuration (required)
 TELEGRAM_BOT_TOKEN=your_bot_token_here

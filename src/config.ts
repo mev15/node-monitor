@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { Config, EthereumConfig, RedisConfig, TelegramConfig } from './types';
+import { Config, EthereumConfig, RedisConfig, DiskConfig, TelegramConfig } from './types';
 
 dotenv.config();
 
@@ -62,14 +62,56 @@ export function loadConfig(): Config {
     reconnectDelayMs: parseInt(process.env.REDIS_RECONNECT_DELAY_MS || process.env.RECONNECT_DELAY_MS || '5000', 10),
   };
 
+  // Disk configuration
+  const diskEnabled = process.env.ENABLE_DISK_MONITOR === 'true'; // Default to false
+  const diskPath = process.env.DISK_PATH || '/';
+  const diskThresholdPercent = parseInt(process.env.DISK_THRESHOLD_PERCENT || '80', 10);
+
+  if (diskThresholdPercent < 0 || diskThresholdPercent > 100) {
+    throw new Error('DISK_THRESHOLD_PERCENT must be between 0 and 100');
+  }
+
+  // 路径安全验证
+  if (diskEnabled && diskPath) {
+    // 白名单路径
+    const ALLOWED_PATHS = ['/', '/data', '/var', '/home', '/tmp', '/opt', '/usr', '/mnt'];
+
+    // 规范化路径
+    const normalizedPath = diskPath.replace(/\/+$/, '') || '/';
+
+    // 检查危险字符
+    if (diskPath.includes('..') || diskPath.includes('~')) {
+      throw new Error('DISK_PATH contains invalid characters (.., ~)');
+    }
+
+    // 检查是否在白名单中
+    const isAllowed = ALLOWED_PATHS.some(allowed =>
+      normalizedPath === allowed || normalizedPath.startsWith(allowed + '/')
+    );
+
+    if (!isAllowed) {
+      throw new Error(`DISK_PATH not in whitelist. Allowed: ${ALLOWED_PATHS.join(', ')}`);
+    }
+  }
+
+  const disk: DiskConfig = {
+    name: 'Disk',
+    enabled: diskEnabled,
+    path: diskPath,
+    thresholdPercent: diskThresholdPercent,
+    maxReconnectAttempts: parseInt(process.env.DISK_MAX_RECONNECT_ATTEMPTS || process.env.MAX_RECONNECT_ATTEMPTS || '3', 10),
+    reconnectDelayMs: parseInt(process.env.DISK_RECONNECT_DELAY_MS || process.env.RECONNECT_DELAY_MS || '5000', 10),
+  };
+
   // Ensure at least one monitor is enabled
-  if (!ethereum.enabled && !redis.enabled) {
-    throw new Error('At least one monitor must be enabled (ENABLE_ETHEREUM_MONITOR or ENABLE_REDIS_MONITOR)');
+  if (!ethereum.enabled && !redis.enabled && !disk.enabled) {
+    throw new Error('At least one monitor must be enabled (ENABLE_ETHEREUM_MONITOR, ENABLE_REDIS_MONITOR, or ENABLE_DISK_MONITOR)');
   }
 
   return {
     ethereum,
     redis,
+    disk,
     telegram,
   };
 }

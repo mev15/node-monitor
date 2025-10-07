@@ -3,6 +3,7 @@ import { Logger } from './core/Logger';
 import { TelegramNotifier } from './core/TelegramNotifier';
 import { EthereumMonitor } from './monitors/EthereumMonitor';
 import { RedisMonitor } from './monitors/RedisMonitor';
+import { DiskMonitor } from './monitors/DiskMonitor';
 import { BaseMonitor } from './core/BaseMonitor';
 
 class MonitorCoordinator {
@@ -43,6 +44,16 @@ class MonitorCoordinator {
         );
         this.monitors.push(redisMonitor);
         this.logger.info('Redis monitor initialized');
+      }
+
+      if (config.disk.enabled) {
+        const diskMonitor = new DiskMonitor(
+          config.disk,
+          this.logger,
+          notifier
+        );
+        this.monitors.push(diskMonitor);
+        this.logger.info('Disk monitor initialized');
       }
 
       if (this.monitors.length === 0) {
