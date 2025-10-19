@@ -1,6 +1,5 @@
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { BaseMonitor } from '../core/BaseMonitor';
 import { DiskConfig, HealthCheckResult, MonitorStatus } from '../types';
@@ -29,23 +28,6 @@ export class DiskMonitor extends BaseMonitor {
     this.localIp = this.getLocalIpv4() || 'Unknown';
   }
 
-  /**
-   * Get local IPv4 address
-   */
-  private getLocalIpv4(): string | null {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-      const iface = interfaces[name];
-      if (iface) {
-        for (const addr of iface) {
-          if (addr.family === 'IPv4' && !addr.internal) {
-            return addr.address;
-          }
-        }
-      }
-    }
-    return null;
-  }
 
   /**
    * Connect - Verify path exists and is accessible

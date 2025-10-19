@@ -1,6 +1,7 @@
 import { MonitorConfig, MonitorStatus, HealthCheckResult } from '../types';
 import { Logger } from './Logger';
 import { TelegramNotifier } from './TelegramNotifier';
+import * as os from 'os';
 
 export abstract class BaseMonitor {
   protected readonly config: MonitorConfig;
@@ -63,6 +64,32 @@ export abstract class BaseMonitor {
   protected abstract getStartupMessage(): string;
 
   /**
+   * Get machine identification (IP address)
+   */
+  protected getMachineInfo(): string {
+    const localIp = this.getLocalIpv4();
+    return localIp || 'IP unavailable';
+  }
+
+  /**
+   * Get local IPv4 address
+   */
+  protected getLocalIpv4(): string | null {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      const iface = interfaces[name];
+      if (iface) {
+        for (const addr of iface) {
+          if (addr.family === 'IPv4' && !addr.internal) {
+            return addr.address;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Send startup notification
    */
   protected async sendStartupNotification(): Promise<void> {
@@ -116,7 +143,8 @@ export abstract class BaseMonitor {
    * Send alert notification
    */
   protected async sendAlert(title: string, message: string, details?: Record<string, any>): Promise<void> {
-    let fullMessage = `🚨 *${this.config.name}: ${title}*\n\n${message}\n\nTime: ${new Date().toISOString()}`;
+    const machineInfo = this.getMachineInfo();
+    let fullMessage = `🚨 *${this.config.name}: ${title}*\n\n${message}\n\nIP: ${machineInfo}\nTime: ${new Date().toISOString()}`;
 
     if (details) {
       fullMessage += '\n\nDetails:\n' + Object.entries(details)

@@ -1,5 +1,4 @@
 import Redis from 'ioredis';
-import * as os from 'os';
 import { BaseMonitor } from '../core/BaseMonitor';
 import { RedisConfig, HealthCheckResult, MonitorStatus } from '../types';
 import { Logger, ContextLogger } from '../core/Logger';
@@ -34,21 +33,6 @@ export class RedisMonitor extends BaseMonitor {
     }
 
     return `${host}:${config.port}`;
-  }
-
-  private getLocalIpv4(): string | null {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-      const iface = interfaces[name];
-      if (iface) {
-        for (const addr of iface) {
-          if (addr.family === 'IPv4' && !addr.internal) {
-            return addr.address;
-          }
-        }
-      }
-    }
-    return null;
   }
 
   protected async connect(): Promise<void> {

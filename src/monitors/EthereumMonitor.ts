@@ -1,6 +1,5 @@
 import { createPublicClient, webSocket, type PublicClient } from 'viem';
 import { mainnet } from 'viem/chains';
-import * as os from 'os';
 import { BaseMonitor } from '../core/BaseMonitor';
 import { EthereumConfig, HealthCheckResult, MonitorStatus } from '../types';
 import { Logger, ContextLogger } from '../core/Logger';
@@ -33,21 +32,6 @@ export class EthereumMonitor extends BaseMonitor {
       }
     }
     return url;
-  }
-
-  private getLocalIpv4(): string | null {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-      const iface = interfaces[name];
-      if (iface) {
-        for (const addr of iface) {
-          if (addr.family === 'IPv4' && !addr.internal) {
-            return addr.address;
-          }
-        }
-      }
-    }
-    return null;
   }
 
   protected async connect(): Promise<void> {
