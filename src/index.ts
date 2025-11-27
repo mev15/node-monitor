@@ -4,6 +4,7 @@ import { TelegramNotifier } from './core/TelegramNotifier';
 import { EthereumMonitor } from './monitors/EthereumMonitor';
 import { RedisMonitor } from './monitors/RedisMonitor';
 import { DiskMonitor } from './monitors/DiskMonitor';
+import { PM2Monitor } from './monitors/PM2Monitor';
 import { BaseMonitor } from './core/BaseMonitor';
 
 class MonitorCoordinator {
@@ -54,6 +55,16 @@ class MonitorCoordinator {
         );
         this.monitors.push(diskMonitor);
         this.logger.info('Disk monitor initialized');
+      }
+
+      if (config.pm2.enabled) {
+        const pm2Monitor = new PM2Monitor(
+          config.pm2,
+          this.logger,
+          notifier
+        );
+        this.monitors.push(pm2Monitor);
+        this.logger.info('PM2 monitor initialized');
       }
 
       if (this.monitors.length === 0) {

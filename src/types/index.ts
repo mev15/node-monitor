@@ -30,10 +30,15 @@ export interface DiskConfig extends MonitorConfig {
   thresholdPercent: number;  // 使用率告警阈值（百分比，0-100）
 }
 
+export interface PM2Config extends MonitorConfig {
+  checkIntervalMs: number;  // 健康检查间隔（毫秒）
+}
+
 export interface Config {
   ethereum: EthereumConfig;
   redis: RedisConfig;
   disk: DiskConfig;
+  pm2: PM2Config;
   telegram: TelegramConfig;
 }
 

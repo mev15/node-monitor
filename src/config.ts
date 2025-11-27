@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { Config, EthereumConfig, RedisConfig, DiskConfig, TelegramConfig } from './types';
+import { Config, EthereumConfig, RedisConfig, DiskConfig, PM2Config, TelegramConfig } from './types';
 
 dotenv.config();
 
@@ -103,15 +103,27 @@ export function loadConfig(): Config {
     reconnectDelayMs: parseInt(process.env.DISK_RECONNECT_DELAY_MS || process.env.RECONNECT_DELAY_MS || '5000', 10),
   };
 
+  // PM2 configuration
+  const pm2Enabled = process.env.ENABLE_PM2_MONITOR === 'true'; // Default to false
+
+  const pm2: PM2Config = {
+    name: 'PM2',
+    enabled: pm2Enabled,
+    checkIntervalMs: parseInt(process.env.PM2_CHECK_INTERVAL_MS || '30000', 10),
+    maxReconnectAttempts: parseInt(process.env.PM2_MAX_RECONNECT_ATTEMPTS || process.env.MAX_RECONNECT_ATTEMPTS || '3', 10),
+    reconnectDelayMs: parseInt(process.env.PM2_RECONNECT_DELAY_MS || process.env.RECONNECT_DELAY_MS || '5000', 10),
+  };
+
   // Ensure at least one monitor is enabled
-  if (!ethereum.enabled && !redis.enabled && !disk.enabled) {
-    throw new Error('At least one monitor must be enabled (ENABLE_ETHEREUM_MONITOR, ENABLE_REDIS_MONITOR, or ENABLE_DISK_MONITOR)');
+  if (!ethereum.enabled && !redis.enabled && !disk.enabled && !pm2.enabled) {
+    throw new Error('At least one monitor must be enabled (ENABLE_ETHEREUM_MONITOR, ENABLE_REDIS_MONITOR, ENABLE_DISK_MONITOR, or ENABLE_PM2_MONITOR)');
   }
 
   return {
     ethereum,
     redis,
     disk,
+    pm2,
     telegram,
   };
 }

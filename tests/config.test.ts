@@ -44,6 +44,8 @@ describe('Config - Extended', () => {
       process.env.TELEGRAM_CHAT_ID = 'test_chat';
       process.env.ENABLE_ETHEREUM_MONITOR = 'false';
       process.env.ENABLE_REDIS_MONITOR = 'false';
+      process.env.ENABLE_DISK_MONITOR = 'false';
+      process.env.ENABLE_PM2_MONITOR = 'false';
 
       expect(() => loadConfig()).toThrow('At least one monitor must be enabled');
     });
