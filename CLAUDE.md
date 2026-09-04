@@ -59,6 +59,8 @@ The system uses an **Abstract Base Monitor Pattern** with a coordinator:
 3. **Concrete Monitors** (in `src/monitors/`)
    - **EthereumMonitor**: WebSocket connection via `viem`, watches for new blocks
    - **RedisMonitor**: Uses `ioredis`, performs PING checks and memory monitoring
+   - **DiskMonitor**: Runs `df` on a whitelisted path, alerts when used percentage crosses the configured threshold (no reconnect logic)
+   - **PM2Monitor**: Runs `pm2 jlist`, alerts on any process whose status is not `online`/`launching`
    - Each extends BaseMonitor and implements service-specific logic
 
 ### Shared Services
